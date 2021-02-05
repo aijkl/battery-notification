@@ -32,7 +32,7 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
         public static AppSettings Load(string filePath)
         {
             AppSettings appSettings = JsonConvert.DeserializeObject<AppSettings>(File.ReadAllText(filePath));
-            appSettings.FilePath = filePath;
+            appSettings.FilePath = filePath;            
             return appSettings;
         }
         public void SaveToFile()
@@ -65,10 +65,13 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
         [JsonProperty("General.Exit")]
         public Dictionary<string, string> GeneralExit { set; get; }
 
+        [JsonProperty("Config.Error")]
+        public Dictionary<string, string> ConfigError { set; get; }
+
         [JsonProperty("OpenVR.InitError")]
         public Dictionary<string, string> OpenVRInitError { set; get; }
 
-        [JsonProperty("Battery.Low")]
-        public Dictionary<string, string> BatteryLow { set; get; }
+        [JsonProperty("Battery.Announce")]
+        public Dictionary<string, string> BatteryAnnounce { set; get; }
     }
 }

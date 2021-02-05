@@ -17,6 +17,7 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
         {
             cvrSystemHelper = new CVRSystemHelper();
             cachedVRDevices = new List<VRDevice>();
+            ReadOnlyVRDevice = cachedVRDevices;
         }        
         public void BeginLoop(CancellationToken cancellationToken, int intervalMiliSecond)
         {

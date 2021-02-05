@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using System.Drawing;
 using System.IO;
-using System.Text;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -26,6 +26,7 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
             try
             {
                 appSettings = AppSettings.Load(Path.Combine(Directory.GetCurrentDirectory(), AppSettings.FILENAME));
+                Application.ApplicationExit += Application_ApplicationExit;
             }
             catch(Exception ex)
             {
@@ -45,12 +46,9 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
                 throw new Exception(appSettings.LanguageDataSet.GetValue(nameof(LanguageDataSet.OpenVRInitError)), ex);
             }
 
-            Application.ApplicationExit += (object sender, EventArgs e) =>
-            {
-                SendTostNotification(DateTimeOffset.Now.AddMilliseconds(appSettings.TostNotificationExpirationMiliSecond));
-            };
 
-            #region Components
+            #region InitializeComponent
+
             notifyIcon = new NotifyIcon();
             notifyIcon.Icon = Icon.FromHandle(Properties.Resources.Icon.GetHicon());
             notifyIcon.Visible = true;
@@ -59,50 +57,52 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
 
             ToolStripMenuItem configureMenuItem = new ToolStripMenuItem();
             configureMenuItem.Text = appSettings.LanguageDataSet.GetValue(nameof(LanguageDataSet.GeneralConfigure));
-            configureMenuItem.Click += (object sender, EventArgs e) =>
-            {
-                Visible = true;
-                mainFormState.IsActive = true;
-            };
+            configureMenuItem.Click += ConfigureMenuItem_Click;
             contextMenuStrip.Items.Add(configureMenuItem);
 
             ToolStripMenuItem exitMenuItem = new ToolStripMenuItem();
             exitMenuItem.Text = appSettings.LanguageDataSet.GetValue(nameof(LanguageDataSet.GeneralExit));
-            exitMenuItem.Click += (object sender, EventArgs e) =>
-            {
-                mainFormState.IsActive = false;
-                Application.Exit();
-            };
+            exitMenuItem.Click += ExitMenuItem_Click;
             contextMenuStrip.Items.Add(exitMenuItem);
+
+            
+            intervalTextBox.Text = appSettings.Interval.ToString();
             
             notifyIcon.ContextMenuStrip = contextMenuStrip;
-            #endregion            
-        }                
-        private void SendTostNotification(DateTimeOffset expirationTime)
-        {            
-            StringBuilder stringBuilder = new StringBuilder();
-            foreach (var vrDevice in batterySurveillancer.ReadOnlyVRDevice)
-            {
-                stringBuilder.AppendLine($"{vrDevice.DeviceType}:{vrDevice.BatteryRemaining}%");
-            }            
 
+            #endregion            
+        }
+
+        private void SendTostNotification(string message, string imagePath, DateTimeOffset expirationTime)
+        {
             XmlDocument toastXml = ToastNotificationManager.GetTemplateContent(ToastTemplateType.ToastImageAndText02);
             XmlNodeList toastElements = toastXml.GetElementsByTagName("toast");
             XmlAttribute xmlAttribute = toastXml.CreateAttribute("duration");
             xmlAttribute.NodeValue = "long";
-            toastElements[0].Attributes.SetNamedItem(xmlAttribute);            
+            toastElements[0].Attributes.SetNamedItem(xmlAttribute);
 
             XmlNodeList stringElements = toastXml.GetElementsByTagName("text");
-            stringElements[0].AppendChild(toastXml.CreateTextNode(appSettings.LanguageDataSet.GetValue(nameof(LanguageDataSet.BatteryLow))));
-            stringElements[1].AppendChild(toastXml.CreateTextNode(stringBuilder.ToString()));
+            stringElements[0].AppendChild(toastXml.CreateTextNode(appSettings.LanguageDataSet.GetValue(nameof(LanguageDataSet.BatteryAnnounce))));
+            stringElements[1].AppendChild(toastXml.CreateTextNode(message));
 
             XmlNodeList imageElements = toastXml.GetElementsByTagName("image");
-            imageElements[0].Attributes.GetNamedItem("src").NodeValue = Path.GetFullPath(appSettings.BatteryLogoPath);
+            imageElements[0].Attributes.GetNamedItem("src").NodeValue = imagePath;
 
             ToastNotification toast = new ToastNotification(toastXml);
             toast.ExpirationTime = expirationTime;
+
             ToastNotificationManager.CreateToastNotifier(appSettings.ApplicationId).Show(toast);
         }
+        private void ConfigureMenuItem_Click(object sender, EventArgs e)
+        {
+            Visible = true;
+            mainFormState.IsActive = true;
+        }
+        private void ExitMenuItem_Click(object sender, EventArgs e)
+        {
+            mainFormState.IsActive = false;
+            Application.Exit();
+        }        
         private void MainForm_Closing(object sender, CancelEventArgs e)
         {
             if (mainFormState.IsActive)
@@ -110,7 +110,31 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
                 e.Cancel = true;
                 Visible = false;                
             }            
-        }        
+        }
+        private void Application_ApplicationExit(object sender, EventArgs e)
+        {
+            try
+            {
+                appSettings.SaveToFile();
+            }
+            catch
+            {
+                MessageBox.Show(appSettings.LanguageDataSet.GetValue(nameof(LanguageDataSet.ConfigError)));
+            }
+
+            if (batterySurveillancer.ReadOnlyVRDevice.Count != 0)
+            {
+                string message = string.Join("\n", batterySurveillancer.ReadOnlyVRDevice.Select(x => $"{x.DeviceType}:{x.BatteryRemaining}%"));
+                SendTostNotification(message, Path.GetFullPath(appSettings.BatteryLogoPath), DateTimeOffset.Now.AddMilliseconds(appSettings.TostNotificationExpirationMiliSecond));
+            }
+        }
+        private void IntervalTextBox_TextChanged(object sender, EventArgs e)
+        {
+            if(int.TryParse(intervalTextBox.Text,out int result))
+            {
+                appSettings.Interval = result;
+            }
+        }
     }
 }
 
