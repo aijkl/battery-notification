@@ -14,7 +14,7 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
                 MainForm mainForm = new MainForm();
-                Application.Run();
+                Application.Run();                
             }
             catch (Exception ex)
             {

@@ -1,11 +1,14 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Valve.VR;
 using Windows.Data.Xml.Dom;
 using Windows.UI.Notifications;
 
@@ -15,8 +18,8 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
     {
         private readonly NotifyIcon notifyIcon;
         private readonly AppSettings appSettings;
-        private readonly MainFormState mainFormState;
-        private readonly BatterySurveillancer batterySurveillancer;
+        private readonly MainFormState mainFormState;        
+        private readonly CVRSystemHelper cvrSystemHelper;
         public MainForm()
         {
             InitializeComponent();
@@ -25,8 +28,7 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
 
             try
             {
-                appSettings = AppSettings.Load(Path.Combine(Directory.GetCurrentDirectory(), AppSettings.FILENAME));
-                Application.ApplicationExit += Application_ApplicationExit;
+                appSettings = AppSettings.Load(Path.GetFullPath(AppSettings.FILENAME));                
             }
             catch(Exception ex)
             {
@@ -34,20 +36,17 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
             }
 
             try
-            {                
-                batterySurveillancer = new BatterySurveillancer();
-                Task.Run(() =>
-                {
-                    batterySurveillancer.BeginLoop(new CancellationTokenSource().Token, appSettings.Interval);
-                });                
+            {
+                cvrSystemHelper = new CVRSystemHelper();
+                cvrSystemHelper.BeginEventLoop();
+                cvrSystemHelper.CVREvent += CVRSystemHelper_CVREvent;
             }
             catch(Exception ex)
             {
                 throw new Exception(appSettings.LanguageDataSet.GetValue(nameof(LanguageDataSet.OpenVRInitError)), ex);
-            }
+            }            
 
-
-            #region InitializeComponent
+            #region InitializeComponent (User)
 
             notifyIcon = new NotifyIcon();
             notifyIcon.Icon = Icon.FromHandle(Properties.Resources.Icon.GetHicon());
@@ -64,15 +63,71 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
             exitMenuItem.Text = appSettings.LanguageDataSet.GetValue(nameof(LanguageDataSet.GeneralExit));
             exitMenuItem.Click += ExitMenuItem_Click;
             contextMenuStrip.Items.Add(exitMenuItem);
-
-            
-            intervalTextBox.Text = appSettings.Interval.ToString();
-            
+                                    
             notifyIcon.ContextMenuStrip = contextMenuStrip;
 
             #endregion            
         }
 
+        private void CVRSystemHelper_CVREvent(object sender, CVREventArgs e)
+        {
+            foreach (var vrEvent in e.VREvents)
+            {
+                if(vrEvent.eventType == (int)EVREventType.VREvent_Quit)
+                {
+                    cvrSystemHelper.CVRSystem.AcknowledgeQuit_Exiting();
+                    List<VRDevice> vrDevices = ReadDevices();
+                    if (vrDevices.Count > 0)
+                    {
+                        string message = string.Join("\n", vrDevices.Select(x => $"{x.DeviceType}:{x.BatteryRemaining}%"));
+                        SendTostNotification(message, Path.GetFullPath(appSettings.BatteryLogoPath), DateTimeOffset.Now.AddMilliseconds(appSettings.TostNotificationExpirationMiliSecond));
+
+                        cvrSystemHelper.Dispose();
+                        Application.Exit();
+                    }
+                }
+            }
+        }
+        private List<VRDevice> ReadDevices()
+        {
+            List<VRDevice> devices = new List<VRDevice>();
+
+            VRDevice leftHand = new VRDevice
+            {
+                BatteryRemaining = cvrSystemHelper.GetControllerBatteryRemainingAmount(ETrackedControllerRole.LeftHand),
+                Index = cvrSystemHelper.GetTrackedDeviceIndexForControllerRole(ETrackedControllerRole.LeftHand),
+                DeviceType = DeviceType.LeftHand
+            };
+            VRDevice rightHand = new VRDevice
+            {
+                BatteryRemaining = cvrSystemHelper.GetControllerBatteryRemainingAmount(ETrackedControllerRole.RightHand),
+                Index = cvrSystemHelper.GetTrackedDeviceIndexForControllerRole(ETrackedControllerRole.RightHand),
+                DeviceType = DeviceType.RightHand
+            };
+            devices.Add(leftHand);
+            devices.Add(rightHand);
+
+            if (cvrSystemHelper.GetPropertyString(leftHand.Index, ETrackedDeviceProperty.Prop_RenderModelName_String, out string result))
+            {
+                Debug.WriteLine(result);
+            }
+            if (cvrSystemHelper.GetPropertyString(rightHand.Index, ETrackedDeviceProperty.Prop_RenderModelName_String, out string result2))
+            {
+                Debug.WriteLine(result2);
+            }
+
+            foreach (var index in cvrSystemHelper.GetViveTrackerIndexs())
+            {
+                devices.Add(new VRDevice
+                {
+                    BatteryRemaining = cvrSystemHelper.GetTrackerBatteryRemainingAmount(index),
+                    Index = index,
+                    DeviceType = DeviceType.ViveTracker
+                });
+            }
+
+            return devices;
+        }
         private void SendTostNotification(string message, string imagePath, DateTimeOffset expirationTime)
         {
             XmlDocument toastXml = ToastNotificationManager.GetTemplateContent(ToastTemplateType.ToastImageAndText02);
@@ -97,10 +152,11 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
         {
             Visible = true;
             mainFormState.IsActive = true;
+            intervalTextBox.Text = appSettings.Interval.ToString();
         }
         private void ExitMenuItem_Click(object sender, EventArgs e)
         {
-            mainFormState.IsActive = false;
+            mainFormState.IsActive = false;            
             Application.Exit();
         }        
         private void MainForm_Closing(object sender, CancelEventArgs e)
@@ -108,33 +164,17 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
             if (mainFormState.IsActive)
             {
                 e.Cancel = true;
-                Visible = false;                
-            }            
-        }
-        private void Application_ApplicationExit(object sender, EventArgs e)
-        {
-            try
-            {
+                Visible = false;
                 appSettings.SaveToFile();
-            }
-            catch
-            {
-                MessageBox.Show(appSettings.LanguageDataSet.GetValue(nameof(LanguageDataSet.ConfigError)));
-            }
-
-            if (batterySurveillancer.ReadOnlyVRDevice.Count != 0)
-            {
-                string message = string.Join("\n", batterySurveillancer.ReadOnlyVRDevice.Select(x => $"{x.DeviceType}:{x.BatteryRemaining}%"));
-                SendTostNotification(message, Path.GetFullPath(appSettings.BatteryLogoPath), DateTimeOffset.Now.AddMilliseconds(appSettings.TostNotificationExpirationMiliSecond));
-            }
-        }
+            }            
+        }        
         private void IntervalTextBox_TextChanged(object sender, EventArgs e)
         {
             if(int.TryParse(intervalTextBox.Text,out int result))
             {
                 appSettings.Interval = result;
             }
-        }
+        }        
     }
 }
 

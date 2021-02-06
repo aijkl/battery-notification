@@ -1,15 +1,18 @@
-﻿using Spectre.Console;
+﻿using Aijkl.VRChat.BatteryNotification.Console.Commands;
+using Spectre.Console.Cli;
 
 namespace Aijkl.VRChat.BatteryNotification.Console
 {
     class Program
-    {              
-        static void Main()
-        {            
-            AnsiConsole.Status().Start("初期化中です....", action =>
-            {                
-
-            });           
-        }
+    {        
+        static int Main(string[] args)
+        {
+            CommandApp commandApp = new CommandApp();
+            commandApp.Configure(configuration =>
+            {
+                configuration.AddCommand<NotificationCommand>("notification");
+            });
+            return commandApp.Run(args);
+        }                                
     }
 }

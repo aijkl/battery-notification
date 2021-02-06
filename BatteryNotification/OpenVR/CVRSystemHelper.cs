@@ -1,13 +1,46 @@
-﻿using System.Collections.Generic;
+﻿using Aijkl.VRChat.BatterNotificaion.Desktop;
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Valve.VR;
 
-namespace Aijkl.VRChat.BatterNotificaion.Desktop
+namespace Aijkl.VRChat.BatteryNotification.Console
 {
-    public class CVRSystemHelper
-    {        
+    public class CVRSystemHelper : IDisposable
+    {
         private CVRSystem _cvrSystem;
         private CVRApplications _cvrApplications;
+        private CVRNotifications _cvrNotifications;
+        private CancellationTokenSource eventLoopCancellationTokenSource;
+
+        public event EventHandler<CVREventArgs> CVREvent;
+
+        public CVRSystemHelper()
+        {
+            eventLoopCancellationTokenSource = new CancellationTokenSource();
+
+            EVRInitError evrInitError = new EVRInitError();
+            _cvrSystem = OpenVR.Init(ref evrInitError, EVRApplicationType.VRApplication_Background);
+            if (evrInitError != EVRInitError.None) throw new Exception(evrInitError.ToString());
+        }
+        public CVRNotifications CVRNotifications
+        {
+            set
+            {
+                _cvrNotifications = value;
+            }
+            get
+            {
+                if(_cvrNotifications == null)
+                {
+                    _cvrNotifications = OpenVR.Notifications;
+                }
+                return CVRNotifications;
+            }
+        }
         public CVRApplications CVRApplications
         {
             set
@@ -30,8 +63,7 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
             {
                 if (_cvrSystem == null)
                 {
-                    EVRInitError evrInitError = new EVRInitError();
-                    _cvrSystem = OpenVR.Init(ref evrInitError, EVRApplicationType.VRApplication_Background);
+                    _cvrSystem =  OpenVR.System;
                 }
                 return _cvrSystem;
             }
@@ -52,22 +84,22 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
         {
             List<uint> devices = new List<uint>();
 
-            int connectedDeviceNum = GetConnectedDevicesCount();            
+            int connectedDeviceNum = GetConnectedDevicesCount();
             uint connectedDeviceCount = 0;
             for (uint i = 0; i < OpenVR.k_unMaxTrackedDeviceCount; i++)
-            {                
+            {
                 if (IsDeviceConnected(i))
                 {
-                    string res = GetRegisteredDeviceType(i);                    
+                    string res = GetRegisteredDeviceType(i);
                     if (res != null)
-                    {                        
+                    {
                         if (res.Contains(name))
                         {
                             devices.Add(i);
                         }
                     }
                     connectedDeviceCount++;
-                }                
+                }
                 if (connectedDeviceCount >= connectedDeviceNum)
                 {
                     break;
@@ -99,7 +131,7 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
         public bool GetPropertyString(uint idx, ETrackedDeviceProperty prop, out string result)
         {
             result = null;
-            ETrackedPropertyError error = new ETrackedPropertyError();            
+            ETrackedPropertyError error = new ETrackedPropertyError();
             uint size = CVRSystem.GetStringTrackedDeviceProperty(idx, prop, null, 0, ref error);
             if (error != ETrackedPropertyError.TrackedProp_BufferTooSmall)
             {
@@ -118,6 +150,38 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
             result = CVRSystem.GetFloatTrackedDeviceProperty(idx, prop, ref error);
             return (error == ETrackedPropertyError.TrackedProp_Success);
         }
+        public bool IsReady()
+        {
+            return CVRSystem != null && CVRApplications != null;
+        }
+        public void BeginEventLoop()
+        {
+            if (!eventLoopCancellationTokenSource.IsCancellationRequested) eventLoopCancellationTokenSource.Cancel();
+
+            eventLoopCancellationTokenSource = new CancellationTokenSource();
+            Task.Run(() =>
+            {
+                while (!eventLoopCancellationTokenSource.IsCancellationRequested)
+                {
+                    if (IsReady())
+                    {
+                        List<VREvent_t> vrEvents = new List<VREvent_t>();
+                        VREvent_t vrEvent = new VREvent_t();
+                        while (CVRSystem.PollNextEvent(ref vrEvent, (uint)Marshal.SizeOf(vrEvent)))
+                        {
+                            vrEvents.Add(vrEvent);
+                        }
+
+                        CVREvent?.Invoke(this, new CVREventArgs(vrEvents));
+                    }
+                    Thread.Sleep(200);
+                }
+            });
+        }
+        public void StopLoop()
+        {
+            if (eventLoopCancellationTokenSource?.IsCancellationRequested != true) eventLoopCancellationTokenSource.Cancel();
+        }
         private int GetConnectedDevicesCount()
         {
             int connectedDevices = 0;
@@ -130,15 +194,15 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
             }
             return connectedDevices;
         }
-        public bool IsReady()
-        {
-            return CVRSystem != null && CVRApplications != null;
-        }
         private bool IsDeviceConnected(uint idx)
         {
             if (!IsReady()) { return false; }
             return CVRSystem.IsTrackedDeviceConnected(idx);
         }
+        public void Dispose()
+        {
+            StopLoop();
+            eventLoopCancellationTokenSource.Dispose();
+        }
     }
 }
-

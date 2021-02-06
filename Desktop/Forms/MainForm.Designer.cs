@@ -74,7 +74,8 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
             this.ClientSize = new System.Drawing.Size(758, 450);
             this.Controls.Add(this.groupBox1);
             this.Name = "MainForm";
-            this.Style = MetroFramework.MetroColorStyle.Lime;
+            this.Style = MetroFramework.MetroColorStyle.Lime;            
+            this.FormClosing += MainForm_Closing;
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
             this.ResumeLayout(false);

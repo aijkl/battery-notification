@@ -4,6 +4,8 @@ using System.Threading;
 using System.Diagnostics;
 using Valve.VR;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 namespace Aijkl.VRChat.BatterNotificaion.Desktop
 {
@@ -17,11 +19,12 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
         {
             cvrSystemHelper = new CVRSystemHelper();
             cachedVRDevices = new List<VRDevice>();
-            ReadOnlyVRDevice = cachedVRDevices;
-        }        
+            ReadOnlyVRDevice = cachedVRDevices;            
+        }                
         public void BeginLoop(CancellationToken cancellationToken, int intervalMiliSecond)
         {
             Stopwatch stopwatch = new Stopwatch();
+            
             while (true)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -30,8 +33,8 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
                 try
                 {
                     if (cvrSystemHelper.IsReady())
-                    {
-                        List<VRDevice> vrDevices = ReadDevices();
+                    {                        
+                        List<VRDevice> vrDevices = ReadDevices();                        
                         if(vrDevices.Count > 0)
                         {
                             BatteryRemainingChanged?.Invoke(this, new VRDeviceEventArgs(vrDevices.Where(x => cachedVRDevices.Where(y => y.Index == x.Index).FirstOrDefault() == null || x.BatteryRemaining != cachedVRDevices.Where(y => y.Index == x.Index).FirstOrDefault().Index).ToList()));

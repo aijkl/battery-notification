@@ -4,7 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 
-namespace Aijkl.VRChat.BatterNotificaion.Desktop
+namespace Aijkl.VRChat.BatteryNotification.Console
 {
     public class AppSettings
     {
@@ -32,7 +32,7 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
         public static AppSettings Load(string filePath)
         {
             AppSettings appSettings = JsonConvert.DeserializeObject<AppSettings>(File.ReadAllText(filePath));
-            appSettings.FilePath = filePath;            
+            appSettings.FilePath = filePath;
             return appSettings;
         }
         public void SaveToFile()
@@ -42,7 +42,7 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
     }
     public class LanguageDataSet
     {
-        public const string CONFIGURE_FILE_NOT_FOUND = "Configuration file not found";
+        public const string CONFIGURE_FILE_ERROR = "Configuration file error";
         public const string ERROR = "An error has occurred";
         public string GetValue(string memberName)
         {
@@ -60,7 +60,7 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
         }
 
         [JsonProperty("General.Configure")]
-        public Dictionary<string,string> GeneralConfigure { set; get; }
+        public Dictionary<string, string> GeneralConfigure { set; get; }
 
         [JsonProperty("General.Exit")]
         public Dictionary<string, string> GeneralExit { set; get; }

@@ -2,15 +2,15 @@
   "source": "BatteryNotification",
   "applications": [
     {
-      "app_key": "BatteryNotification",
+      "app_key": "batteryNotification",
       "launch_type": "binary",
       "binary_path_windows": "..\\BatteryNotification.exe",
-      "is_dashboard_overlay": false,
+      "is_dashboard_overlay": true,
 
       "strings": {
         "en_us": {
           "name": "BatteryNotification",
-          "description": "Battery Notification"
+          "description": "description"
         }
       }
     }
