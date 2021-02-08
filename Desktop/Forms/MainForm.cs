@@ -39,7 +39,7 @@ namespace Aijkl.VRChat.BatterNotificaion.Desktop
             {
                 cvrSystemHelper = new CVRSystemHelper();
                 cvrSystemHelper.BeginEventLoop();
-                cvrSystemHelper.CVREvent += CVRSystemHelper_CVREvent;
+                cvrSystemHelper.CVREvent += CVRSystemHelper_CVREvent;                
             }
             catch(Exception ex)
             {

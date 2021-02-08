@@ -18,12 +18,12 @@ namespace Aijkl.VRChat.BatteryNotification.Console
 
         public event EventHandler<CVREventArgs> CVREvent;
 
-        public CVRSystemHelper()
+        public CVRSystemHelper(EVRApplicationType vrApplicationType = EVRApplicationType.VRApplication_Overlay)
         {
             eventLoopCancellationTokenSource = new CancellationTokenSource();
 
             EVRInitError evrInitError = new EVRInitError();
-            _cvrSystem = OpenVR.Init(ref evrInitError, EVRApplicationType.VRApplication_Background);
+            _cvrSystem = OpenVR.Init(ref evrInitError, vrApplicationType);
             if (evrInitError != EVRInitError.None) throw new Exception(evrInitError.ToString());
         }
         public CVRNotifications CVRNotifications
@@ -38,7 +38,7 @@ namespace Aijkl.VRChat.BatteryNotification.Console
                 {
                     _cvrNotifications = OpenVR.Notifications;
                 }
-                return CVRNotifications;
+                return _cvrNotifications;
             }
         }
         public CVRApplications CVRApplications

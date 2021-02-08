@@ -6,5 +6,8 @@ namespace Aijkl.VRChat.BatteryNotification.Console.Settings
     {        
         [CommandOption("--mode <MODE>")]
         public bool Mode { set; get; }
+
+        [CommandOption("--hidewindow")]
+        public bool HideWindow { set; get; }
     }
 }

@@ -17,14 +17,20 @@ namespace Aijkl.VRChat.BatteryNotification.Console
         [JsonProperty("batteryLogPath")]
         public string BatteryLogoPath { set; get; }
 
-        [JsonProperty("applicationId")]
-        public string ApplicationId { set; get; }
+        [JsonProperty("applicationManifestPath")]
+        public string ApplicationManifestPath { set; get; }
 
-        [JsonProperty("interval")]
-        public int Interval { set; get; }
+        [JsonProperty("applicationId")]
+        public string ApplicationId { set; get; }        
 
         [JsonProperty("tostNotificationExpirationMiliSecond")]
         public int TostNotificationExpirationMiliSecond { set; get; }
+
+        [JsonProperty("interval")]
+        public int NotificationBatteryInterval { set; get; }
+
+        [JsonProperty("batteryLowThreshold")]
+        public int BatteryLowThreshold { set; get; }
 
         [JsonProperty("languageDataSet")]
         public LanguageDataSet LanguageDataSet { set; get; }
@@ -65,13 +71,31 @@ namespace Aijkl.VRChat.BatteryNotification.Console
         [JsonProperty("General.Exit")]
         public Dictionary<string, string> GeneralExit { set; get; }
 
+        [JsonProperty("General.MutexError")]
+        public Dictionary<string, string> GeneralMutexError { set; get; }
+
         [JsonProperty("Config.Error")]
         public Dictionary<string, string> ConfigError { set; get; }
+
+        [JsonProperty("OpenVR.Initializing")]
+        public Dictionary<string, string> OpenVRInitializing { set; get; }
 
         [JsonProperty("OpenVR.InitError")]
         public Dictionary<string, string> OpenVRInitError { set; get; }
 
         [JsonProperty("Battery.Announce")]
         public Dictionary<string, string> BatteryAnnounce { set; get; }
+
+        [JsonProperty("StreamVR.AddManifest.Success")]
+        public Dictionary<string, string> StreamVRAddManifestSuccess { set; get; }
+
+        [JsonProperty("StreamVR.AddManifest.Failure")]
+        public Dictionary<string, string> StreamVRAddManifestFailure { set; get; }
+
+        [JsonProperty("StreamVR.RemoveManifest.Success")]
+        public Dictionary<string, string> StreamVRRemoveManifestSuccess { set; get; }
+
+        [JsonProperty("StreamVR.RemoveManifest.Failure")]
+        public Dictionary<string, string> StreamVRRemoveManifestFailure { set; get; }
     }
 }
