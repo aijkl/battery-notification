@@ -75,7 +75,7 @@ namespace Aijkl.VRChat.BatteryNotification.Console.Commands
         private void CVRSystemHelper_CVREvent(object sender, CVREventArgs e)
         {
             foreach (var vrEvent in e.VREvents)
-            {
+            {                
                 AnsiConsole.WriteLine(((EVREventType)vrEvent.eventType).ToString());
                 switch ((EVREventType)vrEvent.eventType)
                 {
@@ -109,25 +109,26 @@ namespace Aijkl.VRChat.BatteryNotification.Console.Commands
 
             VRDevice leftHand = new VRDevice
             {
-                BatteryRemaining = cvrSystemHelper.GetControllerBatteryRemainingAmount(ETrackedControllerRole.LeftHand),
+                BatteryRemaining = (int)Math.Round(cvrSystemHelper.GetControllerBatteryRemainingAmount(ETrackedControllerRole.LeftHand)),
                 Index = cvrSystemHelper.GetTrackedDeviceIndexForControllerRole(ETrackedControllerRole.LeftHand),
-                DeviceType = DeviceType.LeftHand
+                DeviceType = DeviceType.LeftHand,
+                Name = ETrackedControllerRole.LeftHand.ToString()
             };
             VRDevice rightHand = new VRDevice
             {
-                BatteryRemaining = cvrSystemHelper.GetControllerBatteryRemainingAmount(ETrackedControllerRole.RightHand),
+                BatteryRemaining = (int)Math.Round(cvrSystemHelper.GetControllerBatteryRemainingAmount(ETrackedControllerRole.RightHand)),
                 Index = cvrSystemHelper.GetTrackedDeviceIndexForControllerRole(ETrackedControllerRole.RightHand),
-                DeviceType = DeviceType.RightHand
+                DeviceType = DeviceType.RightHand,
+                Name = ETrackedControllerRole.RightHand.ToString()
             };
 
             devices.Add(leftHand);
-            devices.Add(rightHand);
-            
+            devices.Add(rightHand);            
             foreach (var index in cvrSystemHelper.GetViveTrackerIndexs())
             {
                 devices.Add(new VRDevice
                 {
-                    BatteryRemaining = cvrSystemHelper.GetTrackerBatteryRemainingAmount(index),
+                    BatteryRemaining = (int)Math.Round(cvrSystemHelper.GetTrackerBatteryRemainingAmount(index)),
                     Index = index,
                     DeviceType = DeviceType.ViveTracker,
                     Name = cvrSystemHelper.GetRegisteredDeviceType(index)
@@ -139,8 +140,8 @@ namespace Aijkl.VRChat.BatteryNotification.Console.Commands
                 VRDevice vrDevice = cachedVRDevices.Where(y => y.Index == x.Index).FirstOrDefault();
                 if(vrDevice != null)
                 {
-                    x.NotificationId = vrDevice.NotificationId;                    
-                    x.NotifiedRemaining = (uint)vrDevice.BatteryRemaining;                    
+                    x.NotificationId = vrDevice.NotificationId;
+                    x.NotifiedRemaining = vrDevice.NotifiedRemaining;
                 }
             });
 
@@ -162,9 +163,12 @@ namespace Aijkl.VRChat.BatteryNotification.Console.Commands
         private string ConvertToString()
         {
             StringBuilder stringBuilder = new StringBuilder();
-            stringBuilder.Append($"{DeviceType.LeftHand} {cachedVRDevices.Where(x => x.DeviceType == DeviceType.LeftHand).Select(x => x.BatteryRemaining).First()}%");
+            VRDevice leftHand = cachedVRDevices.Where(x => x.DeviceType == DeviceType.LeftHand).First();
+            VRDevice rightHand = cachedVRDevices.Where(x => x.DeviceType == DeviceType.RightHand).First();
+
+            stringBuilder.Append($"{DeviceType.LeftHand} {leftHand.BatteryRemaining}%");
             stringBuilder.Append("  ");
-            stringBuilder.AppendLine($"{DeviceType.RightHand} {cachedVRDevices.Where(x => x.DeviceType == DeviceType.RightHand).Select(x => x.BatteryRemaining).First()}%");
+            stringBuilder.AppendLine($"{DeviceType.RightHand} {rightHand.BatteryRemaining}%");
 
             cachedVRDevices.Where(x => x.DeviceType == DeviceType.ViveTracker).ToList().ForEach(x =>
             {
@@ -189,7 +193,7 @@ namespace Aijkl.VRChat.BatteryNotification.Console.Commands
         }
         private bool NeedNotification(VRDevice vrDevice)
         {
-            if(vrDevice.BatteryRemaining <= appSettings.BatteryLowThreshold && vrDevice.NotifiedRemaining - vrDevice.BatteryRemaining >= appSettings.NotificationBatteryInterval)
+            if(vrDevice.BatteryRemaining <= appSettings.BatteryLowThreshold && Math.Abs(vrDevice.NotifiedRemaining - vrDevice.BatteryRemaining) >= appSettings.NotificationBatteryInterval)
             {
                 return true;
             }

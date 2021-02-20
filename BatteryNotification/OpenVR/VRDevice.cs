@@ -11,7 +11,7 @@ namespace Aijkl.VRChat.BatteryNotification.Console
     public class VRDevice
     {
         public string Name { set; get; }
-        public float BatteryRemaining { set; get; }
+        public int BatteryRemaining { set; get; }
         public uint Index { set; get; }
         public DeviceType DeviceType { set; get; }                
         public uint NotificationId { set; get; }
